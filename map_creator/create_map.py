@@ -77,7 +77,7 @@ class Perlin1D(PerlinBase):
 
   def calc_gradient(self, point):
     point = PERMUTATED_LIST[int(point) & 0xff]
-
+    #return RANDOM[point] / 256.0
     return -1.0 if (RANDOM[point] / 256.0) < 0.5 else 1.0
 
 
@@ -169,41 +169,48 @@ def save_map(conf, data):
     newmap.write(map_str)
 
 
-def main_interactive_mode(conf, perlin):
-  # Calculate and print initial map
-  new_map = create_map_1d(conf, perlin)
-  print(format_map_data_to_str(new_map))
+def print_map_info_table(conf):
+  w, h, f, a = conf.width, conf.height, conf.frequency, conf.amplitude
+  f_s, a_s = conf.freq_scale, conf.ampl_scale
+  wall = " | "
 
+  info_table = f"FREQ: {f}{wall}FREQ SCALE: {f_s}{wall} AMPL: {a}{wall}AMPL SCALE: {a_s}{wall}WIDTH: {w}{wall}HEIGHT: {h}"
+  sys.stdout.write(info_table)
+
+
+def main_interactive_mode(conf, perlin):
+  new_map = create_map_1d(conf, perlin)
+  os.system("$(which clear)")
   next_x = conf.width + 1
   carry_on = True
   while carry_on:
     try:
-      os.system("$(which clear)")
+      # Calculate next point and apply it to the map
       next_y = perlin.calc_noise(next_x)
-
       for c in new_map:
         c.pop(0)
         c.append(EMPTY)
-
       y = scale_values(0, conf.height, next_x, next_y)[1] # Only y-value needed
       if y < 0:
         y = 0
       elif y >= conf.height:
         y = conf.height - 1
       new_map[y][conf.width - 1] = TERRAIN
-
       map_str = format_map_data_to_str(new_map)
-
-      print(map_str)
+      # Print info table, map and move cursor to start position
+      print_map_info_table(conf)
+      sys.stdout.write(map_str + "\r")
+      sys.stdout.write("\033[{}A".format(conf.height))
+      # Increment to next position and sleep to achieve desired framerate
       next_x += 1
       time.sleep(1.0 / conf.speed)
-
     except KeyboardInterrupt:
       carry_on = False
     except Exception:
       print(traceback.format_exc())
       carry_on = False
-
+  sys.stdout.write("\r")
+  os.system("$(which clear)")
 
 def main_default_mode(conf, perlin):
   newmap = create_map_1d(conf, perlin)
